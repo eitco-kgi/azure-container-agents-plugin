@@ -52,6 +52,15 @@
         "networkProfile": {
           "Id": "[resourceId('Microsoft.Network/networkProfiles', variables('networkName'))]"
         },
+        "ipAddress": {
+          "type": "Public",
+          "ports": [
+            {
+              "protocol": "tcp",
+              "port": "80"
+            }
+          ]
+        },
         "imageRegistryCredentials": [
         ]
       }

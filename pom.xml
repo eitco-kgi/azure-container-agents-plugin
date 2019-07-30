@@ -8,7 +8,7 @@
         <version>3.42</version>
     </parent>
 
-    <artifactId>azure-container-agents</artifactId>
+    <artifactId>azure-container-agents-eitco</artifactId>
     <version>1.0.1-SNAPSHOT</version>
     <packaging>hpi</packaging>
 
@@ -32,9 +32,9 @@
     </developers>
 
     <scm>
-        <connection>scm:git:ssh://git@github.com/jenkinsci/azure-container-agents-plugin.git</connection>
-        <developerConnection>scm:git:ssh://git@github.com/jenkinsci/azure-container-agents-plugin.git</developerConnection>
-        <url>https://github.com/jenkinsci/azure-container-agents-plugin</url>
+        <connection>scm:git:ssh://git@github.com/eitco-kgi/azure-container-agents-plugin.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/eitco-kgi/azure-container-agents-plugin.git</developerConnection>
+        <url>https://github.com/eitco-kgi/azure-container-agents-plugin</url>
         <tag>HEAD</tag>
     </scm>
 

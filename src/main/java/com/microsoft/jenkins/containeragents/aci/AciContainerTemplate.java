@@ -6,12 +6,14 @@ import com.cloudbees.plugins.credentials.common.StandardUsernameCredentials;
 import com.cloudbees.plugins.credentials.domains.DomainRequirement;
 import com.microsoft.jenkins.containeragents.Messages;
 import com.microsoft.jenkins.containeragents.PodEnvVar;
+import com.microsoft.jenkins.containeragents.aci.volumes.AzureFileVolume;
 import com.microsoft.jenkins.containeragents.remote.LaunchMethodTypeContent;
 import com.microsoft.jenkins.containeragents.strategy.ContainerIdleRetentionStrategy;
 import com.microsoft.jenkins.containeragents.strategy.ContainerOnceRetentionStrategy;
-import com.microsoft.jenkins.containeragents.aci.volumes.AzureFileVolume;
+import com.microsoft.jenkins.containeragents.util.AzureContainerUtils;
 import com.microsoft.jenkins.containeragents.util.Constants;
 import hudson.Extension;
+import hudson.RelativePath;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.Descriptor;
 import hudson.model.Item;
@@ -21,6 +23,12 @@ import hudson.security.ACL;
 import hudson.slaves.RetentionStrategy;
 import hudson.util.FormValidation;
 import hudson.util.ListBoxModel;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.logging.Logger;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.time.StopWatch;
 import org.jenkinsci.plugins.docker.commons.credentials.DockerRegistryEndpoint;
@@ -28,12 +36,6 @@ import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
-import java.util.logging.Logger;
 
 public class AciContainerTemplate extends AbstractDescribableImpl<AciContainerTemplate> {
 
@@ -74,29 +76,38 @@ public class AciContainerTemplate extends AbstractDescribableImpl<AciContainerTe
 
     private String sshPort;
 
+    private final String networkName;
+
+    private final boolean publicIp;
+
     private boolean isAvailable = true;
 
     @DataBoundConstructor
     public AciContainerTemplate(String name,
-                                String label,
-                                int timeout,
-                                String osType,
-                                String image,
-                                String command,
-                                String rootFs,
-                                List<AciPort> ports,
-                                List<DockerRegistryEndpoint> privateRegistryCredentials,
-                                List<PodEnvVar> envVars,
-                                List<AzureFileVolume> volumes,
-                                RetentionStrategy<?> retentionStrategy,
-                                String cpu,
-                                String memory) {
+        String label,
+        int timeout,
+        String osType,
+        String image,
+        String command,
+        String rootFs,
+        List<AciPort> ports,
+        List<DockerRegistryEndpoint> privateRegistryCredentials,
+        List<PodEnvVar> envVars,
+        List<AzureFileVolume> volumes,
+        RetentionStrategy<?> retentionStrategy,
+        String cpu,
+        String memory,
+        String networkName,
+        boolean publicIp
+    ) {
         this.name = name;
         this.label = label;
         this.image = image;
         this.osType = osType;
         this.command = command;
         this.rootFs = rootFs;
+        this.networkName = networkName;
+        this.publicIp = publicIp;
         if (ports == null) {
             this.ports = new ArrayList<>();
         } else {
@@ -124,12 +135,14 @@ public class AciContainerTemplate extends AbstractDescribableImpl<AciContainerTe
         setAvailable(true);
     }
 
-    public void provisionAgents(AciCloud cloud, AciAgent agent, StopWatch stopWatch) throws Exception {
+    public void provisionAgents(AciCloud cloud, AciAgent agent, StopWatch stopWatch)
+        throws Exception {
         AciService.createDeployment(cloud, this, agent, stopWatch);
     }
 
     public boolean isJnlp() {
-        return StringUtils.isBlank(launchMethodType) || launchMethodType.equals(Constants.LAUNCH_METHOD_JNLP);
+        return StringUtils.isBlank(launchMethodType) || launchMethodType
+            .equals(Constants.LAUNCH_METHOD_JNLP);
     }
 
     public String getName() {
@@ -206,7 +219,8 @@ public class AciContainerTemplate extends AbstractDescribableImpl<AciContainerTe
 
     @DataBoundSetter
     public void setLaunchMethodType(String launchMethodType) {
-        this.launchMethodType = StringUtils.defaultString(launchMethodType, Constants.LAUNCH_METHOD_JNLP);
+        this.launchMethodType = StringUtils
+            .defaultString(launchMethodType, Constants.LAUNCH_METHOD_JNLP);
     }
 
     public String getSshCredentialsId() {
@@ -220,9 +234,18 @@ public class AciContainerTemplate extends AbstractDescribableImpl<AciContainerTe
     @DataBoundSetter
     public void setLaunchMethodTypeContent(LaunchMethodTypeContent launchMethodTypeContent) {
         if (launchMethodTypeContent != null) {
-            this.sshCredentialsId = StringUtils.defaultString(launchMethodTypeContent.getSshCredentialsId());
+            this.sshCredentialsId = StringUtils
+                .defaultString(launchMethodTypeContent.getSshCredentialsId());
             this.sshPort = StringUtils.defaultString(launchMethodTypeContent.getSshPort(), "22");
         }
+    }
+
+    public String getNetworkName() {
+        return networkName;
+    }
+
+    public boolean isPublicIp() {
+        return publicIp;
     }
 
     @Extension
@@ -255,7 +278,8 @@ public class AciContainerTemplate extends AbstractDescribableImpl<AciContainerTe
         public ListBoxModel doFillSshCredentialsIdItems(@AncestorInPath Item owner) {
             StandardListBoxModel listBoxModel = new StandardListBoxModel();
             listBoxModel.add("--- Select Azure Container Service Credentials ---", "");
-            listBoxModel.withAll(CredentialsProvider.lookupCredentials(StandardUsernameCredentials.class,
+            listBoxModel
+                .withAll(CredentialsProvider.lookupCredentials(StandardUsernameCredentials.class,
                     owner,
                     ACL.SYSTEM,
                     Collections.<DomainRequirement>emptyList()));
@@ -264,11 +288,18 @@ public class AciContainerTemplate extends AbstractDescribableImpl<AciContainerTe
 
         public FormValidation doCheckSshPort(@QueryParameter String value) {
             if (StringUtils.isBlank(value) || value.matches("^[0-9]*$")
-                    && Integer.parseInt(value) >= Constants.SSH_PORT_MIN
-                    && Integer.parseInt(value) <= Constants.SSH_PORT_MAX) {
+                && Integer.parseInt(value) >= Constants.SSH_PORT_MIN
+                && Integer.parseInt(value) <= Constants.SSH_PORT_MAX) {
                 return FormValidation.ok();
             }
             return FormValidation.error(Messages.Pod_Template_Not_Number_Error());
         }
+
+        public ListBoxModel doFillNetworkNameItems(
+            @RelativePath("..") @QueryParameter String credentialsId) throws IOException {
+
+            return AzureContainerUtils.listVirtualNetworks(credentialsId);
+        }
+
     }
 }

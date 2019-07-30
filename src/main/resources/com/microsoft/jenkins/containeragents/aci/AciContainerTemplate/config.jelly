@@ -75,6 +75,14 @@
             <f:textbox default="1.5"/>
         </f:entry>
 
+        <f:entry field="networkName" title="${%Network_Name}">
+            <f:select/>
+        </f:entry>
+
+        <f:entry field="publicIp" title="${%Public_IP}" description="whether the container should obtain a public ip">
+            <f:checkbox/>
+        </f:entry>
+
     </f:advanced>
 
 </j:jelly>

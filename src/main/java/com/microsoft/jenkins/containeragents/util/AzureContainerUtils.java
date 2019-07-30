@@ -5,7 +5,9 @@ import com.cloudbees.plugins.credentials.CredentialsProvider;
 import com.cloudbees.plugins.credentials.common.StandardListBoxModel;
 import com.cloudbees.plugins.credentials.domains.DomainRequirement;
 import com.microsoft.azure.AzureEnvironment;
+import com.microsoft.azure.PagedList;
 import com.microsoft.azure.management.Azure;
+import com.microsoft.azure.management.network.VirtualNetworkGateway;
 import com.microsoft.azure.management.resources.ResourceGroup;
 import com.microsoft.azure.util.AzureBaseCredentials;
 import com.microsoft.azure.util.AzureCredentialUtil;
@@ -65,6 +67,30 @@ public final class AzureContainerUtils {
                 ACL.SYSTEM,
                 Collections.<DomainRequirement>emptyList()));
         return listBoxModel;
+    }
+
+    public static ListBoxModel listVirtualNetworks(String credentialsId) {
+
+        ListBoxModel model = new ListBoxModel();
+        model.add("--- Select Virtual Network ---", "");
+
+        if (StringUtils.isBlank(credentialsId)) {
+            return model;
+        }
+
+        try {
+            final Azure azureClient = getAzureClient(credentialsId);
+
+            PagedList<VirtualNetworkGateway> list = azureClient.virtualNetworkGateways().list();
+            for (VirtualNetworkGateway virtualNetworkGateway : list) {
+
+                model.add(virtualNetworkGateway.name());
+            }
+        } catch (Exception e) {
+            LOGGER.log(Level.INFO, Messages.Resource_Group_List_Failed(e));
+        }
+
+        return model;
     }
 
     public static ListBoxModel listResourceGroupItems(String credentialsId) throws IOException {

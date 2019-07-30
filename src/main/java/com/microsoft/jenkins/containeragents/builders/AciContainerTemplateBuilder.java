@@ -5,7 +5,8 @@ import com.microsoft.jenkins.containeragents.remote.LaunchMethodTypeContent;
 import com.microsoft.jenkins.containeragents.strategy.ContainerIdleRetentionStrategy;
 import com.microsoft.jenkins.containeragents.util.Constants;
 
-public class AciContainerTemplateBuilder extends AciContainerTemplateFluent<AciContainerTemplateBuilder> {
+public class AciContainerTemplateBuilder extends
+    AciContainerTemplateFluent<AciContainerTemplateBuilder> {
 
     private AciContainerTemplateFluent<?> fluent;
 
@@ -26,7 +27,8 @@ public class AciContainerTemplateBuilder extends AciContainerTemplateFluent<AciC
         this.fluent.withCpu(template.getCpu());
         this.fluent.withMemory(template.getMemory());
         if (template.getRetentionStrategy() instanceof ContainerIdleRetentionStrategy) {
-            this.fluent.withIdleRetentionStrategy(((ContainerIdleRetentionStrategy) template.getRetentionStrategy())
+            this.fluent.withIdleRetentionStrategy(
+                ((ContainerIdleRetentionStrategy) template.getRetentionStrategy())
                     .getIdleMinutes());
         } else {
             this.fluent.withOnceRetentionStrategy();
@@ -45,7 +47,8 @@ public class AciContainerTemplateBuilder extends AciContainerTemplateFluent<AciC
         this.fluent = fluent;
     }
 
-    public AciContainerTemplateBuilder(AciContainerTemplateFluent<?> fluent, AciContainerTemplate template) {
+    public AciContainerTemplateBuilder(AciContainerTemplateFluent<?> fluent,
+        AciContainerTemplate template) {
         this.fluent = fluent;
         this.fluent.withName(template.getName());
         this.fluent.withLabel(template.getLabel());
@@ -58,7 +61,8 @@ public class AciContainerTemplateBuilder extends AciContainerTemplateFluent<AciC
         this.fluent.withCpu(template.getCpu());
         this.fluent.withMemory(template.getMemory());
         if (template.getRetentionStrategy() instanceof ContainerIdleRetentionStrategy) {
-            this.fluent.withIdleRetentionStrategy(((ContainerIdleRetentionStrategy) template.getRetentionStrategy())
+            this.fluent.withIdleRetentionStrategy(
+                ((ContainerIdleRetentionStrategy) template.getRetentionStrategy())
                     .getIdleMinutes());
         } else {
             this.fluent.withOnceRetentionStrategy();
@@ -75,21 +79,24 @@ public class AciContainerTemplateBuilder extends AciContainerTemplateFluent<AciC
 
     public AciContainerTemplate build() {
         AciContainerTemplate template = new AciContainerTemplate(fluent.getName(),
-                fluent.getLabel(),
-                fluent.getTimeout(),
-                fluent.getOsType(),
-                fluent.getImage(),
-                fluent.getCommand(),
-                fluent.getRootFs(),
-                fluent.getPorts(),
-                fluent.getPrivateRegistryCredentials(),
-                fluent.getEnvVars(),
-                fluent.getVolumes(),
-                fluent.getRetentionStrategy(),
-                fluent.getCpu(),
-                fluent.getMemory());
+            fluent.getLabel(),
+            fluent.getTimeout(),
+            fluent.getOsType(),
+            fluent.getImage(),
+            fluent.getCommand(),
+            fluent.getRootFs(),
+            fluent.getPorts(),
+            fluent.getPrivateRegistryCredentials(),
+            fluent.getEnvVars(),
+            fluent.getVolumes(),
+            fluent.getRetentionStrategy(),
+            fluent.getCpu(),
+            fluent.getMemory(),
+            null,
+            true);
         template.setLaunchMethodType(fluent.getLaunchMethodType());
-        template.setLaunchMethodTypeContent(new LaunchMethodTypeContent(fluent.getSshCredentialsId(),
+        template
+            .setLaunchMethodTypeContent(new LaunchMethodTypeContent(fluent.getSshCredentialsId(),
                 fluent.getSshPort()));
         return template;
     }

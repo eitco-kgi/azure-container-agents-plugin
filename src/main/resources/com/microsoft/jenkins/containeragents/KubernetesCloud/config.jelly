@@ -39,7 +39,7 @@
     </f:entry>
 
     <st:once>
-        <script type="text/javascript" src="${rootURL}/plugin/azure-container-agents/scripts/config-context.js" />
+        <script type="text/javascript" src="${rootURL}/plugin/azure-container-agents-eitco/scripts/config-context.js" />
     </st:once>
 
 </j:jelly>
