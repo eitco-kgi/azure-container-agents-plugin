@@ -143,7 +143,7 @@ public final class AciService {
                 }
             }
         } catch (Exception e) {
-            throw new Exception(e.getMessage());
+            throw new Exception(e);
         }
     }
 
