@@ -5,9 +5,8 @@ import com.cloudbees.plugins.credentials.CredentialsProvider;
 import com.cloudbees.plugins.credentials.common.StandardListBoxModel;
 import com.cloudbees.plugins.credentials.domains.DomainRequirement;
 import com.microsoft.azure.AzureEnvironment;
-import com.microsoft.azure.PagedList;
 import com.microsoft.azure.management.Azure;
-import com.microsoft.azure.management.network.VirtualNetworkGateway;
+import com.microsoft.azure.management.network.Network;
 import com.microsoft.azure.management.resources.ResourceGroup;
 import com.microsoft.azure.util.AzureBaseCredentials;
 import com.microsoft.azure.util.AzureCredentialUtil;
@@ -19,24 +18,25 @@ import com.microsoft.jenkins.containeragents.Messages;
 import hudson.model.Item;
 import hudson.security.ACL;
 import hudson.util.ListBoxModel;
-import jenkins.model.Jenkins;
-import org.apache.commons.lang.RandomStringUtils;
-import org.apache.commons.lang.StringUtils;
-
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import jenkins.model.Jenkins;
+import org.apache.commons.lang.RandomStringUtils;
+import org.apache.commons.lang.StringUtils;
 
 
 public final class AzureContainerUtils {
+
     private static final Logger LOGGER = Logger.getLogger(AzureContainerUtils.class.getName());
 
     public static String generateName(String name, int randomLength) {
         final int maxNameLength = 62;
-        String randString = RandomStringUtils.random(randomLength, "bcdfghjklmnpqrstvwxz0123456789");
+        String randString = RandomStringUtils
+            .random(randomLength, "bcdfghjklmnpqrstvwxz0123456789");
         if (StringUtils.isEmpty(name)) {
             return String.format("%s-%s", "jenkins-agent", randString);
         }
@@ -52,24 +52,26 @@ public final class AzureContainerUtils {
     }
 
     public static boolean isTimeout(long startupTimeout, long elapsedTime) {
-        return (startupTimeout > 0 && TimeUnit.MILLISECONDS.toMinutes(elapsedTime) >= startupTimeout);
+        return (startupTimeout > 0
+            && TimeUnit.MILLISECONDS.toMinutes(elapsedTime) >= startupTimeout);
     }
 
     public static boolean isHalfTimePassed(long startupTimeout, long elaspedTime) {
-        return (startupTimeout > 0 && TimeUnit.MILLISECONDS.toMinutes(elaspedTime) >= startupTimeout / 2);
+        return (startupTimeout > 0
+            && TimeUnit.MILLISECONDS.toMinutes(elaspedTime) >= startupTimeout / 2);
     }
 
     public static ListBoxModel listCredentialsIdItems(Item owner) {
         StandardListBoxModel listBoxModel = new StandardListBoxModel();
         listBoxModel.add("--- Select Azure Credentials ---", "");
         listBoxModel.withAll(CredentialsProvider.lookupCredentials(AzureBaseCredentials.class,
-                owner,
-                ACL.SYSTEM,
-                Collections.<DomainRequirement>emptyList()));
+            owner,
+            ACL.SYSTEM,
+            Collections.<DomainRequirement>emptyList()));
         return listBoxModel;
     }
 
-    public static ListBoxModel listVirtualNetworks(String credentialsId) {
+    public static ListBoxModel listVirtualNetworks(String credentialsId, String resourceGroup) {
 
         ListBoxModel model = new ListBoxModel();
         model.add("--- Select Virtual Network ---", "");
@@ -79,13 +81,13 @@ public final class AzureContainerUtils {
         }
 
         try {
+
             final Azure azureClient = getAzureClient(credentialsId);
 
-            PagedList<VirtualNetworkGateway> list = azureClient.virtualNetworkGateways().list();
-            for (VirtualNetworkGateway virtualNetworkGateway : list) {
-
-                model.add(virtualNetworkGateway.name());
+            for (Network network : azureClient.networks().listByResourceGroup(resourceGroup)) {
+                model.add(network.name());
             }
+
         } catch (Exception e) {
             LOGGER.log(Level.INFO, Messages.Resource_Group_List_Failed(e));
         }
@@ -134,12 +136,14 @@ public final class AzureContainerUtils {
             @Override
             public Azure.Configurable configure(Azure.Configurable configurable) {
                 return configurable
-                        .withInterceptor(new ContainerPlugin.AzureTelemetryInterceptor())
-                        .withUserAgent(getUserAgent());
+                    .withInterceptor(new ContainerPlugin.AzureTelemetryInterceptor())
+                    .withUserAgent(getUserAgent());
             }
         });
     }
-    private static AzureEnvironment getAzureEnvironment(AzureCredentials.ServicePrincipal servicePrincipal) {
+
+    private static AzureEnvironment getAzureEnvironment(
+        AzureCredentials.ServicePrincipal servicePrincipal) {
         String managementEndpoint = servicePrincipal.getManagementEndpoint();
         if (managementEndpoint.equals(AzureEnvironment.AZURE.managementEndpoint())) {
             return AzureEnvironment.AZURE;
@@ -147,7 +151,8 @@ public final class AzureContainerUtils {
             return AzureEnvironment.AZURE_CHINA;
         } else if (managementEndpoint.equals(AzureEnvironment.AZURE_GERMANY.managementEndpoint())) {
             return AzureEnvironment.AZURE_GERMANY;
-        } else if (managementEndpoint.equals(AzureEnvironment.AZURE_US_GOVERNMENT.managementEndpoint())) {
+        } else if (managementEndpoint
+            .equals(AzureEnvironment.AZURE_US_GOVERNMENT.managementEndpoint())) {
             return AzureEnvironment.AZURE_US_GOVERNMENT;
         } else {
             return AzureEnvironment.AZURE;

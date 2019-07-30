@@ -296,9 +296,11 @@ public class AciContainerTemplate extends AbstractDescribableImpl<AciContainerTe
         }
 
         public ListBoxModel doFillNetworkNameItems(
-            @RelativePath("..") @QueryParameter String credentialsId) throws IOException {
+            @RelativePath("..") @QueryParameter String credentialsId,
+            @RelativePath("..") @QueryParameter String resourceGroup
+        ) throws IOException {
 
-            return AzureContainerUtils.listVirtualNetworks(credentialsId);
+            return AzureContainerUtils.listVirtualNetworks(credentialsId, resourceGroup);
         }
 
     }
