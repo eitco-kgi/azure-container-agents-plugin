@@ -93,7 +93,8 @@ public class AciContainerTemplateBuilder extends
             fluent.getCpu(),
             fluent.getMemory(),
             null,
-            true);
+            true,
+            null);
         template.setLaunchMethodType(fluent.getLaunchMethodType());
         template
             .setLaunchMethodTypeContent(new LaunchMethodTypeContent(fluent.getSshCredentialsId(),

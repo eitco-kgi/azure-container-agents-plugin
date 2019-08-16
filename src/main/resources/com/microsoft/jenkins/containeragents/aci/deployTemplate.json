@@ -15,7 +15,7 @@
     {
       "name": "[variables('containerName')]",
       "type": "Microsoft.ContainerInstance/containerGroups",
-      "apiVersion": "2017-08-01-preview",
+      "apiVersion": "2018-07-01",
       "tags": {
         "JenkinsInstance": "[variables('jenkinsInstance')]"
       },
@@ -49,8 +49,14 @@
         "osType": "[variables('osType')]",
         "volumes": [
         ],
-        "networkProfile": {
-          "Id": "[resourceId('Microsoft.Network/networkProfiles', variables('networkName'))]"
+        "ipAddress": {
+          "type": "Public",
+          "ports": [
+            {
+              "protocol": "tcp",
+              "port": "80"
+            }
+          ]
         },
         "imageRegistryCredentials": [
         ]

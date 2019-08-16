@@ -78,6 +78,8 @@ public class AciContainerTemplate extends AbstractDescribableImpl<AciContainerTe
 
     private final String networkName;
 
+    private final String subNetName;
+
     private final boolean publicIp;
 
     private boolean isAvailable = true;
@@ -98,8 +100,8 @@ public class AciContainerTemplate extends AbstractDescribableImpl<AciContainerTe
         String cpu,
         String memory,
         String networkName,
-        boolean publicIp
-    ) {
+        boolean publicIp,
+        String subNetName) {
         this.name = name;
         this.label = label;
         this.image = image;
@@ -108,6 +110,7 @@ public class AciContainerTemplate extends AbstractDescribableImpl<AciContainerTe
         this.rootFs = rootFs;
         this.networkName = networkName;
         this.publicIp = publicIp;
+        this.subNetName = subNetName;
         if (ports == null) {
             this.ports = new ArrayList<>();
         } else {
@@ -244,6 +247,10 @@ public class AciContainerTemplate extends AbstractDescribableImpl<AciContainerTe
         return networkName;
     }
 
+    public String getSubNetName() {
+        return subNetName;
+    }
+
     public boolean isPublicIp() {
         return publicIp;
     }
@@ -301,6 +308,15 @@ public class AciContainerTemplate extends AbstractDescribableImpl<AciContainerTe
         ) throws IOException {
 
             return AzureContainerUtils.listVirtualNetworks(credentialsId, resourceGroup);
+        }
+
+        public ListBoxModel doFillSubNetNameItems(
+            @RelativePath("..") @QueryParameter String credentialsId,
+            @RelativePath("..") @QueryParameter String resourceGroup,
+            @QueryParameter String networkName
+        ) throws IOException {
+
+            return AzureContainerUtils.listSubnets(credentialsId, resourceGroup, networkName);
         }
 
     }

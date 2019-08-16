@@ -15,9 +15,6 @@ import hudson.remoting.Channel;
 import hudson.slaves.ComputerLauncher;
 import hudson.slaves.SlaveComputer;
 import hudson.util.Secret;
-import jenkins.model.Jenkins;
-import org.apache.commons.lang.StringUtils;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -27,14 +24,18 @@ import java.util.Properties;
 import java.util.concurrent.Callable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import jenkins.model.Jenkins;
+import org.apache.commons.lang.StringUtils;
 
 public class SSHLauncher extends ComputerLauncher {
+
     private static final Logger LOGGER = Logger.getLogger(SSHLauncher.class.getName());
     private static final int RETRY_LIMIT = 3;
     private static final int RETRY_INTERVAL = 10;
 
     @Override
-    public void launch(SlaveComputer computer, TaskListener listener) throws IOException, InterruptedException {
+    public void launch(SlaveComputer computer, TaskListener listener)
+        throws IOException, InterruptedException {
         if (computer == null) {
             LOGGER.log(Level.WARNING, "SSHLauncher: computer is null");
             return;
@@ -61,7 +62,7 @@ public class SSHLauncher extends ComputerLauncher {
         final PrintStream logger = listener.getLogger();
 
         LOGGER.log(Level.INFO, "SSHLauncher: Start to connect node {0} : {1} via SSH",
-                new Object[]{node.getDisplayName(), host});
+            new Object[]{node.getDisplayName(), host});
         try {
             SSHClient sshClient = new RetryTask<SSHClient>(new Callable<SSHClient>() {
                 @Override
@@ -70,7 +71,8 @@ public class SSHLauncher extends ComputerLauncher {
                 }
             }, new SSHRetryStrategy(RETRY_LIMIT, RETRY_INTERVAL)).call();
 
-            InputStream inputStream = new ByteArrayInputStream(Jenkins.getInstance().getJnlpJars("slave.jar")
+            InputStream inputStream = new ByteArrayInputStream(
+                Jenkins.getInstance().getJnlpJars("slave.jar")
                     .readFully());
             sshClient.copyTo(inputStream, "slave.jar");
             LOGGER.log(Level.INFO, "SSHLauncher: Copy slave.jar to remote host successfully");
@@ -101,16 +103,16 @@ public class SSHLauncher extends ComputerLauncher {
             channelExec.connect();
 
             computer.setChannel(channelExec.getInputStream(),
-                    channelExec.getOutputStream(),
-                    logger,
-                    new Channel.Listener() {
-                @Override
-                public void onClosed(Channel channel, IOException cause) {
-                    if (channelExec != null) {
-                        channelExec.disconnect();
+                channelExec.getOutputStream(),
+                logger,
+                new Channel.Listener() {
+                    @Override
+                    public void onClosed(Channel channel, IOException cause) {
+                        if (channelExec != null) {
+                            channelExec.disconnect();
+                        }
                     }
-                }
-            });
+                });
             LOGGER.log(Level.INFO, "SSHLauncher: launched agent successfully");
         } catch (Exception e) {
             LOGGER.log(Level.INFO, "SSHLauncher: launching agent failed");
@@ -123,15 +125,17 @@ public class SSHLauncher extends ComputerLauncher {
 
     }
 
-    private Session getSession(StandardUsernameCredentials credentials, String host, int port) throws JSchException {
+    private Session getSession(StandardUsernameCredentials credentials, String host, int port)
+        throws JSchException {
         JSch jsch = new JSch();
         if (credentials instanceof SSHUserPrivateKey) {
             SSHUserPrivateKey sshUserPrivateKey = (SSHUserPrivateKey) credentials;
             Secret passphraseSecret = sshUserPrivateKey.getPassphrase();
             String passphrase = passphraseSecret == null
-                    ? null
-                    : passphraseSecret.getPlainText();
-            byte[] passphraseBytes = passphrase == null ? null : passphrase.getBytes(StandardCharsets.UTF_8);
+                ? null
+                : passphraseSecret.getPlainText();
+            byte[] passphraseBytes =
+                passphrase == null ? null : passphrase.getBytes(StandardCharsets.UTF_8);
 
             int seq = 0;
             for (String privateKey : sshUserPrivateKey.getPrivateKeys()) {
@@ -139,7 +143,8 @@ public class SSHLauncher extends ComputerLauncher {
                 if (seq++ != 0) {
                     name += "-" + seq;
                 }
-                jsch.addIdentity(name, privateKey.getBytes(StandardCharsets.UTF_8), null, passphraseBytes);
+                jsch.addIdentity(name, privateKey.getBytes(StandardCharsets.UTF_8), null,
+                    passphraseBytes);
             }
         }
 
@@ -150,7 +155,7 @@ public class SSHLauncher extends ComputerLauncher {
         session.setConfig(config);
         if (credentials instanceof StandardUsernamePasswordCredentials) {
             session.setPassword(((StandardUsernamePasswordCredentials) credentials)
-                    .getPassword().getPlainText());
+                .getPassword().getPlainText());
         }
         return session;
     }

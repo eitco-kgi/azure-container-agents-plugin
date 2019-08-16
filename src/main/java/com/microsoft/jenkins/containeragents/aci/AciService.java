@@ -59,33 +59,45 @@ public final class AciService {
             final ObjectMapper mapper = new ObjectMapper();
             final JsonNode tmp = mapper.readTree(stream);
 
-            ObjectNode.class.cast(tmp.get("variables")).put("containerName", agent.getNodeName());
-            ObjectNode.class.cast(tmp.get("variables")).put("containerImage", template.getImage());
-            ObjectNode.class.cast(tmp.get("variables")).put("osType", template.getOsType());
-            ObjectNode.class.cast(tmp.get("variables")).put("cpu", template.getCpu());
-            ObjectNode.class.cast(tmp.get("variables")).put("memory", template.getMemory());
-            ObjectNode.class.cast(tmp.get("variables")).put("jenkinsInstance",
-                Jenkins.getInstance().getLegacyInstanceId());
-            ObjectNode.class.cast(tmp.get("variables"))
-                .put("networkName", template.getNetworkName());
+            ObjectNode variablesNode = ObjectNode.class.cast(tmp.get("variables"));
 
-            addCommandNode(tmp, mapper, template.getCommand(), agent);
+            variablesNode.put("containerName", agent.getNodeName());
+            variablesNode.put("containerImage", template.getImage());
+            variablesNode.put("osType", template.getOsType());
+            variablesNode.put("cpu", template.getCpu());
+            variablesNode.put("memory", template.getMemory());
+            variablesNode.put("jenkinsInstance", Jenkins.getInstance().getLegacyInstanceId());
+            variablesNode.put("networkName", template.getNetworkName());
+            variablesNode.put("subNetName", template.getSubNetName());
+            variablesNode.put("networkProfileName",
+                "profile_" + template.getNetworkName() + "_" + template.getSubNetName());
+            variablesNode.put("interfaceConfigName",
+                "icn_" + template.getNetworkName() + "_" + template.getSubNetName());
+            variablesNode.put("interfaceIpConfigName",
+                "iicn_" + template.getNetworkName() + "_" + template.getSubNetName());
+
+            JsonNode containerGroupResource = tmp.get("resources")
+                .get(0);
+
+            addCommandNode(mapper, template.getCommand(), agent, containerGroupResource);
 
             for (AciPort port : template.getPorts()) {
                 if (StringUtils.isBlank(port.getPort())) {
                     continue;
                 }
-                addPortNode(tmp, mapper, port.getPort());
+                addPortNode(mapper, port.getPort(), template.isPublicIp(), containerGroupResource);
             }
             if (template.getLaunchMethodType().equals(Constants.LAUNCH_METHOD_SSH)) {
-                addPortNode(tmp, mapper, String.valueOf(template.getSshPort()));
+                addPortNode(mapper, String.valueOf(template.getSshPort()), template.isPublicIp(),
+                    containerGroupResource);
             }
 
-            addEnvNode(tmp, mapper, template.getEnvVars());
+            addEnvNode(mapper, template.getEnvVars(), containerGroupResource);
 
             for (DockerRegistryEndpoint registryEndpoint : template
                 .getPrivateRegistryCredentials()) {
-                addImageRegistryCredentialNode(tmp, mapper, registryEndpoint);
+                addImageRegistryCredentialNode(mapper, registryEndpoint,
+                    containerGroupResource);
             }
 
             for (AzureFileVolume volume : template.getVolumes()) {
@@ -94,7 +106,7 @@ public final class AciService {
                     || StringUtils.isBlank(volume.getCredentialsId())) {
                     continue;
                 }
-                addAzureFileVolumeNode(tmp, mapper, volume);
+                addAzureFileVolumeNode(mapper, volume, containerGroupResource);
             }
 
             azureClient.deployments()
@@ -147,24 +159,30 @@ public final class AciService {
         }
     }
 
-    private static void addPortNode(JsonNode tmp, ObjectMapper mapper, String port) {
-        JsonNode propertiesNode = tmp.get("resources").get(0).get("properties");
+    private static void addPortNode(ObjectMapper mapper, String port,
+        boolean publicIp, JsonNode containerGroupResource) {
+        JsonNode propertiesNode = containerGroupResource.get("properties");
         ArrayNode containerPortsNodes = ArrayNode.class.cast(propertiesNode.get("containers")
             .get(0).get("properties").get("ports"));
-        ArrayNode ipPortsNodes = ArrayNode.class.cast(propertiesNode.get("ipAddress").get("ports"));
 
         ObjectNode newContainerPortNode = mapper.createObjectNode();
         newContainerPortNode.put("port", port);
         containerPortsNodes.add(newContainerPortNode);
 
-        ObjectNode newIpPortNode = mapper.createObjectNode();
-        newIpPortNode.put("protocol", "tcp");
-        newIpPortNode.put("port", port);
-        ipPortsNodes.add(newIpPortNode);
+        if (publicIp) {
+            ArrayNode ipPortsNodes = ArrayNode.class
+                .cast(propertiesNode.get("ipAddress").get("ports"));
+
+            ObjectNode newIpPortNode = mapper.createObjectNode();
+            newIpPortNode.put("protocol", "tcp");
+            newIpPortNode.put("port", port);
+            ipPortsNodes.add(newIpPortNode);
+        }
     }
 
-    private static void addCommandNode(JsonNode tmp, ObjectMapper mapper, String[] commands) {
-        ArrayNode commandNode = ArrayNode.class.cast(tmp.get("resources").get(0)
+    private static void addCommandNode(ObjectMapper mapper, String[] commands,
+        JsonNode containerGroupResource) {
+        ArrayNode commandNode = ArrayNode.class.cast(containerGroupResource
             .get("properties").get("containers").get(0)
             .get("properties").get("command"));
 
@@ -173,18 +191,17 @@ public final class AciService {
         }
     }
 
-    private static void addCommandNode(JsonNode tmp, ObjectMapper mapper, String command,
-        AciAgent agent) {
+    private static void addCommandNode(ObjectMapper mapper, String command,
+        AciAgent agent, JsonNode containerGroupResource) {
         if (StringUtils.isBlank(command)) {
             return;
         }
         String replaceCommand = commandReplace(command, agent);
-        addCommandNode(tmp, mapper, StringUtils.split(replaceCommand, ' '));
+        addCommandNode(mapper, StringUtils.split(replaceCommand, ' '), containerGroupResource);
     }
 
-    private static void addImageRegistryCredentialNode(JsonNode tmp,
-        ObjectMapper mapper,
-        DockerRegistryEndpoint endpoint) throws IOException {
+    private static void addImageRegistryCredentialNode(ObjectMapper mapper,
+        DockerRegistryEndpoint endpoint, JsonNode containerGroupResource) throws IOException {
         if (StringUtils.isBlank(endpoint.getCredentialsId())) {
             return;
         }
@@ -198,8 +215,8 @@ public final class AciService {
         if (credentials == null) {
             return;
         }
-        ArrayNode credentialNode = ArrayNode.class.cast(tmp.get("resources").get(0)
-            .get("properties").get("imageRegistryCredentials"));
+        ArrayNode credentialNode = ArrayNode.class
+            .cast(containerGroupResource.get("properties").get("imageRegistryCredentials"));
         ObjectNode newCredentialNode = mapper.createObjectNode();
         newCredentialNode.put("server", StringUtils.isBlank(endpoint.getUrl())
             ? "index.docker.io"
@@ -210,8 +227,10 @@ public final class AciService {
         credentialNode.add(newCredentialNode);
     }
 
-    private static void addEnvNode(JsonNode tmp, ObjectMapper mapper, List<PodEnvVar> envVars) {
-        ArrayNode envVarNode = ArrayNode.class.cast(tmp.get("resources").get(0)
+    private static void addEnvNode(ObjectMapper mapper, List<PodEnvVar> envVars,
+        JsonNode containerGroupResource) {
+
+        ArrayNode envVarNode = ArrayNode.class.cast(containerGroupResource
             .get("properties").get("containers").get(0).get("properties")
             .get("environmentVariables"));
 
@@ -226,12 +245,12 @@ public final class AciService {
         }
     }
 
-    private static void addAzureFileVolumeNode(JsonNode tmp, ObjectMapper mapper,
-        AzureFileVolume volume) {
-        ArrayNode volumeMountsNode = ArrayNode.class.cast(tmp.get("resources").get(0)
+    private static void addAzureFileVolumeNode(ObjectMapper mapper,
+        AzureFileVolume volume, JsonNode containerGroupResource) {
+        ArrayNode volumeMountsNode = ArrayNode.class.cast(containerGroupResource
             .get("properties").get("containers").get(0).get("properties").get("volumeMounts"));
         ArrayNode volumesNode = ArrayNode.class
-            .cast(tmp.get("resources").get(0).get("properties").get("volumes"));
+            .cast(containerGroupResource.get("properties").get("volumes"));
 
         ObjectNode newVolumeMountsNode = mapper.createObjectNode();
         String volumeName = AzureContainerUtils

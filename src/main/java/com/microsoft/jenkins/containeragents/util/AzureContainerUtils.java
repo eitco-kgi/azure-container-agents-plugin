@@ -7,6 +7,7 @@ import com.cloudbees.plugins.credentials.domains.DomainRequirement;
 import com.microsoft.azure.AzureEnvironment;
 import com.microsoft.azure.management.Azure;
 import com.microsoft.azure.management.network.Network;
+import com.microsoft.azure.management.network.Subnet;
 import com.microsoft.azure.management.resources.ResourceGroup;
 import com.microsoft.azure.util.AzureBaseCredentials;
 import com.microsoft.azure.util.AzureCredentialUtil;
@@ -21,6 +22,7 @@ import hudson.util.ListBoxModel;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -77,6 +79,12 @@ public final class AzureContainerUtils {
         model.add("--- Select Virtual Network ---", "");
 
         if (StringUtils.isBlank(credentialsId)) {
+
+            return model;
+        }
+
+        if (StringUtils.isBlank(resourceGroup)) {
+
             return model;
         }
 
@@ -86,6 +94,43 @@ public final class AzureContainerUtils {
 
             for (Network network : azureClient.networks().listByResourceGroup(resourceGroup)) {
                 model.add(network.name());
+            }
+
+        } catch (Exception e) {
+            LOGGER.log(Level.INFO, Messages.Resource_Group_List_Failed(e));
+        }
+
+        return model;
+    }
+
+    public static ListBoxModel listSubnets(String credentialsId, String resourceGroup,
+        String networkName) {
+
+        ListBoxModel model = new ListBoxModel();
+        model.add("--- Select Subnet ---", "");
+
+        if (StringUtils.isBlank(credentialsId)) {
+
+            return model;
+        }
+
+        if (StringUtils.isBlank(resourceGroup)) {
+
+            return model;
+        }
+
+        if (StringUtils.isBlank(networkName)) {
+
+            return model;
+        }
+
+        try {
+
+            final Azure azureClient = getAzureClient(credentialsId);
+
+            for (Entry<String, Subnet> network : azureClient.networks()
+                .getByResourceGroup(resourceGroup, networkName).subnets().entrySet()) {
+                model.add(network.getValue().name());
             }
 
         } catch (Exception e) {

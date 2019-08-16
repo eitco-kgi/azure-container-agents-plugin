@@ -9,17 +9,25 @@
     "cpu": "",
     "memory": "",
     "osType": "",
-    "jenkinsInstance": ""
+    "jenkinsInstance": "",
+    "networkName": "",
+    "subNetName": "",
+    "networkProfileName": "",
+    "interfaceConfigName": "",
+    "interfaceIpConfigName": ""
   },
   "resources": [
     {
       "name": "[variables('containerName')]",
       "type": "Microsoft.ContainerInstance/containerGroups",
-      "apiVersion": "2017-08-01-preview",
+      "apiVersion": "2018-07-01",
       "tags": {
         "JenkinsInstance": "[variables('jenkinsInstance')]"
       },
       "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkProfiles', variables('networkProfileName'))]"
+      ],
       "properties": {
         "containers": [
           {
@@ -50,18 +58,34 @@
         "volumes": [
         ],
         "networkProfile": {
-          "Id": "[resourceId('Microsoft.Network/networkProfiles', variables('networkName'))]"
-        },
-        "ipAddress": {
-          "type": "Public",
-          "ports": [
-            {
-              "protocol": "tcp",
-              "port": "80"
-            }
-          ]
+          "Id": "[resourceId('Microsoft.Network/networkProfiles', variables('networkProfileName'))]"
         },
         "imageRegistryCredentials": [
+        ]
+      }
+    },
+    {
+      "name": "[variables('networkProfileName')]",
+      "type": "Microsoft.Network/networkProfiles",
+      "apiVersion": "2018-07-01",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "containerNetworkInterfaceConfigurations": [
+          {
+            "name": "[variables('interfaceConfigName')]",
+            "properties": {
+              "ipConfigurations": [
+                {
+                  "name": "[variables('interfaceIpConfigName')]",
+                  "properties": {
+                    "subnet": {
+                      "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('networkName'), variables('subNetName'))]"
+                    }
+                  }
+                }
+              ]
+            }
+          }
         ]
       }
     }
