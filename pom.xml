@@ -55,6 +55,20 @@
         <windows-azure-storage.version>0.3.6</windows-azure-storage.version>
     </properties>
 
+    <distributionManagement>
+        <repository>
+            <id>eitco-nexus</id>
+            <name>eitco-nexus</name>
+            <url>https://eitco-nexus.westeurope.cloudapp.azure.com/repository/maven-common-release/</url>
+        </repository>
+        <snapshotRepository>
+            <id>eitco-nexus</id>
+            <name>eitco-nexus</name>
+            <url>https://eitco-nexus.westeurope.cloudapp.azure.com/repository/maven-common-snapshot/</url>
+        </snapshotRepository>
+    </distributionManagement>
+
+
     <dependencies>
         <dependency>
             <groupId>com.microsoft.azure</groupId>
